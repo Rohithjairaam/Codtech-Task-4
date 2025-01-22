@@ -1,0 +1,118 @@
+#include <iostream>
+#include <string>
+#include <cctype>
+#include <stdexcept>
+
+using namespace std;
+
+class SimpleCompiler {
+private:
+    string input;
+    size_t pos;
+
+    // Helper function to skip whitespace
+    void skipWhitespace() {
+        while (pos < input.size() && isspace(input[pos])) {
+            pos++;
+        }
+    }
+
+    // Parse a number
+    double parseNumber() {
+        skipWhitespace();
+        size_t start = pos;
+        while (pos < input.size() && (isdigit(input[pos]) || input[pos] == '.')) {
+            pos++;
+        }
+        if (start == pos) {
+            throw runtime_error("Expected a number at position " + to_string(pos));
+        }
+        return stod(input.substr(start, pos - start));
+    }
+
+    // Parse a factor: numbers or parentheses
+    double parseFactor() {
+        skipWhitespace();
+        if (pos < input.size() && input[pos] == '(') {
+            pos++; // Consume '('
+            double result = parseExpression();
+            skipWhitespace();
+            if (pos >= input.size() || input[pos] != ')') {
+                throw runtime_error("Expected ')' at position " + to_string(pos));
+            }
+            pos++; // Consume ')'
+            return result;
+        } else {
+            return parseNumber();
+        }
+    }
+
+    // Parse terms: factors with multiplication or division
+    double parseTerm() {
+        double result = parseFactor();
+        while (true) {
+            skipWhitespace();
+            if (pos < input.size() && input[pos] == '*') {
+                pos++; // Consume '*'
+                result *= parseFactor();
+            } else if (pos < input.size() && input[pos] == '/') {
+                pos++; // Consume '/'
+                double divisor = parseFactor();
+                if (divisor == 0) {
+                    throw runtime_error("Division by zero at position " + to_string(pos));
+                }
+                result /= divisor;
+            } else {
+                break;
+            }
+        }
+        return result;
+    }
+
+    // Parse expressions: terms with addition or subtraction
+    double parseExpression() {
+        double result = parseTerm();
+        while (true) {
+            skipWhitespace();
+            if (pos < input.size() && input[pos] == '+') {
+                pos++; // Consume '+'
+                result += parseTerm();
+            } else if (pos < input.size() && input[pos] == '-') {
+                pos++; // Consume '-'
+                result -= parseTerm();
+            } else {
+                break;
+            }
+        }
+        return result;
+    }
+
+public:
+    SimpleCompiler(const string& expr) : input(expr), pos(0) {}
+
+    // Evaluate the expression
+    double evaluate() {
+        double result = parseExpression();
+        skipWhitespace();
+        if (pos < input.size()) {
+            throw runtime_error("Unexpected character at position " + to_string(pos));
+        }
+        return result;
+    }
+};
+
+int main() {
+    string expression;
+    cout << "Enter a mathematical expression (e.g., 3 + 5 * (2 - 8)): ";
+    getline(cin, expression);
+
+    try {
+        SimpleCompiler compiler(expression);
+        double result = compiler.evaluate();
+        cout << "Result: " << result << endl;
+    } catch (const exception& e) {
+        cerr << "Error: " << e.what() << endl;
+    }
+
+    return 0;
+}
